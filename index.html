@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sterile Dressing</title>
+  <title>Postpartum</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; padding:16px; }
     #page { margin:auto; width:100%; max-width:900px; }
@@ -138,9 +138,9 @@ leave to document: wound, dressing
   <audio id="ttsAudio" preload="auto"></audio>
 
   <script>
-    // ---- CONFIG: set this to your Worker URL after deploy ----
-    const WORKER_URL = "https://postpartum-tts.chris8331.workers.dev/api/tts";
-    const VOICE = "en-US-JennyNeural"; // High-quality US female
+    // Replace with your Worker URL:
+    const WORKER_URL = "https://postpartum-tts.<yourname>.workers.dev/api/tts"; 
+    const VOICE = "en-US-JennyNeural";
     const FORMAT = "audio-24khz-48kbitrate-mono-mp3";
 
     let lines = [];
@@ -160,8 +160,10 @@ leave to document: wound, dressing
 
     async function speak(text) {
       if (!soundCheckbox.checked || !text.trim()) return;
+
+      // Try Cloud TTS
       try {
-        setStatus("synthesizing…");
+        setStatus("cloud TTS…");
         const res = await fetch(WORKER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -169,12 +171,27 @@ leave to document: wound, dressing
         });
         if (!res.ok) throw new Error(await res.text());
         const blob = await res.blob();
+        if (blob.size < 2000) throw new Error("Empty audio");
         audioEl.src = URL.createObjectURL(blob);
         await audioEl.play();
         setStatus("");
+        return; // success
       } catch (err) {
-        console.warn("Cloud TTS error:", err);
-        setStatus("cloud TTS failed");
+        console.warn("Cloud TTS failed, falling back:", err);
+        setStatus("cloud TTS failed → local voice");
+      }
+
+      // Fallback: browser speechSynthesis
+      try {
+        const utter = new SpeechSynthesisUtterance(text);
+        const voices = speechSynthesis.getVoices();
+        utter.voice = voices.find(v => v.lang === "en-US") || voices.find(v => v.lang.startsWith("en")) || null;
+        utter.rate = 1.0;
+        utter.pitch = 1.0;
+        speechSynthesis.speak(utter);
+      } catch (err) {
+        console.error("Local TTS also failed:", err);
+        setStatus("all TTS failed");
       }
     }
 
