@@ -13,6 +13,7 @@
     button:hover { background:#eee; }
     textarea { width:100%; height:60vh; font-size:10pt; }
     input[type="text"] { width:6ch; text-align:center; }
+    .small { font-size:12px; color:#666; }
   </style>
 </head>
 <body>
@@ -34,6 +35,7 @@
       <div class="col">
         <input type="checkbox" id="soundCheckbox" checked>
         <label for="soundCheckbox">sound</label>
+        <span class="small" id="status"></span>
       </div>
     </div>
 
@@ -47,7 +49,87 @@ inform patient of interaction
 obtain consent
 ask if patient has other allergies like latex
 leave to gather supplies. hand hygiene
-...
+state that you would virox the table
+gather required materials
+  dressing kit
+  abdo dressing
+  tape
+  saline
+  sterile gloves
+  clean gloves
+place items on table
+enter room with table. Hand hygiene
+provide for patient privacy
+ensure proper placement of equipment. bed height, table at head of bed, table height, garbage can
+expose dressing area cover rest of patient
+hand hygiene
+put on clean gloves
+gently remove soiled dressing
+note properties out loud for drainage
+  quantity 
+  quality 
+  odor
+dispose of dressing in garbage
+assess wound out loud with REEDA
+  redness
+  edema
+  ecchymosis
+  drainage
+  approximation
+remove soiled gloves perform hand hygiene
+prepare sterile field 
+remove plastic wrap, make garbage bag
+place dressing tray in center of table
+orient tray so flap tip points towards you
+grasp tip of flap open away and fold over table
+pull side flaps and fold over
+grasp last flap with one hand pin with forceps
+step back and open last flap
+position the field on the table by using hands on border
+position the tray using the forceps wet near patient
+take garbage bag in the tray and throw it out. don't go below waist or touch garbage
+sort out tray, extra drapes out
+put down forceps at edge of sterile field
+pick up saline
+verify expiry and if open
+open saline place cap up
+hold it over label
+if already opened pour some out, don't touch garbage
+pour some saline into the tray
+add abdo to sterile field with temp forceps, throw out wrapper
+throw out temp forceps
+hand hygiene
+open sterile gloves 
+place inner package on table
+throw out outer package
+open package to expose gloves do not touch or overlap sterile field
+glove dominant hand first pinch inside surface of glove and slide on
+glove non dominant hand
+slide gloved fingers under cuff and lift
+keep gloved thumb away
+slide non dominant hand in 
+ensure the gloves don't touch skin, self or drop below waist
+use elbow throw glove package off table
+separate items on sterile field
+extend sterile field placing drape on patient
+prepare 3 wet gauze and wring out
+wet clean inside wound wipe not scrub throw out
+wet clean left wound wipe not scrub throw out
+wet clean right wound wipe not scrub throw out
+dry gauze inside wound, throw out
+dry gauze left wound, throw out
+dry gauze right wound, throw out
+apply a 4x4 gauze to wound forceps don't touch 
+place abdo on top of gauze
+sterile field ends
+tape over the edges of abdo
+remove soiled gloves
+tweezers and pin in sharps
+dispose of remaining materials in garbage
+cover patient and return to comfortable position
+adjust height of bed
+close interview with patient, assure, educate
+hand hygiene
 leave to document: wound, dressing
       </textarea>
     </div>
@@ -56,6 +138,11 @@ leave to document: wound, dressing
   <audio id="ttsAudio" preload="auto"></audio>
 
   <script>
+    // ---- CONFIG: set this to your Worker URL after deploy ----
+    const WORKER_URL = "https://YOUR_WORKER_URL/api/tts"; // e.g., https://sterile-dressing-tts.yourname.workers.dev/api/tts
+    const VOICE = "en-US-JennyNeural"; // High-quality US female
+    const FORMAT = "audio-24khz-48kbitrate-mono-mp3";
+
     let lines = [];
     let index = 0;
     let playing = false;
@@ -67,22 +154,27 @@ leave to document: wound, dressing
     const textArea = document.getElementById("textArea");
     const soundCheckbox = document.getElementById("soundCheckbox");
     const audioEl = document.getElementById("ttsAudio");
+    const statusEl = document.getElementById("status");
+
+    function setStatus(msg) { statusEl.textContent = msg || ""; }
 
     async function speak(text) {
       if (!soundCheckbox.checked || !text.trim()) return;
       try {
-        // 👇 change this URL to your deployed proxy endpoint
-        const res = await fetch("https://your-proxy.example.com/api/tts", {
+        setStatus("synthesizing…");
+        const res = await fetch(WORKER_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ text, voice: VOICE, format: FORMAT })
         });
-        if (!res.ok) throw new Error("TTS request failed");
+        if (!res.ok) throw new Error(await res.text());
         const blob = await res.blob();
         audioEl.src = URL.createObjectURL(blob);
         await audioEl.play();
+        setStatus("");
       } catch (err) {
-        console.error("TTS error:", err);
+        console.warn("Cloud TTS error:", err);
+        setStatus("cloud TTS failed");
       }
     }
 
