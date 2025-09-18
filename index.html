@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sterile Dressing</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; padding:16px; }
+    #page { margin:auto; width:100%; max-width:900px; }
+    .row { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .col { display:flex; align-items:center; gap:8px; }
+    button { padding:10px 14px; border:1px solid #ccc; border-radius:8px; background:#f6f6f6; cursor:pointer; }
+    button:hover { background:#eee; }
+    textarea { width:100%; height:60vh; font-size:10pt; }
+    input[type="text"] { width:6ch; text-align:center; }
+  </style>
+</head>
+<body>
+  <div id="page">
+    <div class="row" style="margin-bottom:8px;">
+      <div class="col" style="flex:1;">
+        <button id="play" style="flex:1;">Play</button>
+      </div>
+      <div class="col" style="flex:1; justify-content:flex-end;">
+        <button id="step" style="flex:1;">Step</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:8px;">
+      <div class="col">
+        <button id="scorebtn">mistake</button>
+        <input id="score" type="text" value="0" read-only>
+      </div>
+      <div class="col">
+        <input type="checkbox" id="soundCheckbox" checked>
+        <label for="soundCheckbox">sound</label>
+      </div>
+    </div>
+
+    <div id="txtarea">
+      <textarea id="textArea">
+hand hygiene
+review chart. order complete dated signed
+introduce self
+patient ID verbal and bracelet
+inform patient of interaction
+obtain consent
+ask if patient has other allergies like latex
+leave to gather supplies. hand hygiene
+...
+leave to document: wound, dressing
+      </textarea>
+    </div>
+  </div>
+
+  <audio id="ttsAudio" preload="auto"></audio>
+
+  <script>
+    let lines = [];
+    let index = 0;
+    let playing = false;
+
+    const playBtn = document.getElementById("play");
+    const stepBtn = document.getElementById("step");
+    const scoreBtn = document.getElementById("scorebtn");
+    const scoreInput = document.getElementById("score");
+    const textArea = document.getElementById("textArea");
+    const soundCheckbox = document.getElementById("soundCheckbox");
+    const audioEl = document.getElementById("ttsAudio");
+
+    async function speak(text) {
+      if (!soundCheckbox.checked || !text.trim()) return;
+      try {
+        // 👇 change this URL to your deployed proxy endpoint
+        const res = await fetch("https://your-proxy.example.com/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        if (!res.ok) throw new Error("TTS request failed");
+        const blob = await res.blob();
+        audioEl.src = URL.createObjectURL(blob);
+        await audioEl.play();
+      } catch (err) {
+        console.error("TTS error:", err);
+      }
+    }
+
+    playBtn.addEventListener("click", function() {
+      if (playing) return;
+      playing = true;
+      lines = textArea.value.split("\n");
+      textArea.value = "";
+      index = 0;
+      playLines();
+    });
+
+    stepBtn.addEventListener("click", function() {
+      if (index === 0) {
+        lines = textArea.value.split("\n");
+        textArea.value = "";
+      }
+      if (index <= lines.length && index !== 0) {
+        const line = lines[index - 1];
+        textArea.value += line + "\n";
+        textArea.scrollTop = textArea.scrollHeight;
+        speak(line);
+      }
+      index++;
+    });
+
+    scoreBtn.addEventListener("click", function() {
+      scoreInput.value = parseInt(scoreInput.value, 10) + 1;
+      textArea.value += "*** ^ ***\n";
+    });
+
+    function playLines() {
+      if (index >= lines.length) {
+        playing = false;
+        return;
+      }
+      const line = lines[index];
+      textArea.value += line + "\n";
+      textArea.scrollTop = textArea.scrollHeight;
+      speak(line);
+      index++;
+      setTimeout(playLines, 3000);
+    }
+  </script>
+</body>
+</html>
